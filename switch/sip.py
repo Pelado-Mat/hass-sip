@@ -49,12 +49,13 @@ class SIP(SwitchDevice):
         self._station_name = station_name
         self._api_url = api_url
         self._api_pass = api_pass
+        self._is_on = False
+        self._state_attr = {}
 
     @property
     def name(self):
         """Return the name of the switch."""
-
-        return "SIP "+self._station_name
+        return self._station_name
 
     @property
     def should_poll(self):
@@ -63,20 +64,7 @@ class SIP(SwitchDevice):
 
     @property
     def is_on(self):
-        """Return true if device is on."""
-
-        r = []
-        if self._api_pass is None :
-            r = requests.get(self._api_url+'/api/status')
-            r = r.json()
-        else:
-            r = requests.get(self._api_url+'/api/status?pw='+self._api_pass)
-            r = r.json()
-
-        for i in r:
-            if int(i["station"]) == self._station:
-                if i["status"] == "on":
-                    return True
+        return self._is_on
 
     def turn_on(self, **kwargs):
         """Turn the device on."""
@@ -98,8 +86,12 @@ class SIP(SwitchDevice):
     @property
     def state_attributes(self):
         """Return the state attributes of the valves"""
+        return self._state_attr
+
+    def update(self):
+        """Update state of device.""" 
         r = []
-        if self._api_pass is None:
+        if self._api_pass is None :
             r = requests.get(self._api_url+'/api/status')
             r = r.json()
         else:
@@ -108,10 +100,16 @@ class SIP(SwitchDevice):
 
         for i in r:
             if int(i["station"]) == self._station:
-                return {
+                self._state_attr =  {
                         STATE_ATTR_REASON: i["reason"],
                         STATE_ATTR_STATION: i["station"],
                         STATE_ATTR_MASTER: i["master"],
                         STATE_ATTR_PROGRAM: i["programName"],
                         STATE_ATTR_REMAINING: i["remaining"]
-                        }
+                }
+                self._station_name = i["name"]
+                if i["status"] == "on":
+                    self._is_on = True
+                else:
+                    self._is_on = False
+
